@@ -6,6 +6,8 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 import io.qameta.allure.Step;
+import java.util.ArrayList;
+import java.util.HashMap;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoAlertPresentException;
@@ -56,11 +58,12 @@ public class BookTest {
 
     @Test
     public void addBookAPI() {
+        String bookId = "9781449325862";
         String token = generateToken();
         String userId = apiLogin();
         deleteBooksInCollection(token, userId);
-        addBookToCollection(token, userId);
-
+        addBookToCollection(token, userId, bookId);
+        checkBookIsInCollection(bookId, token, userId);
     }
 
     @AfterMethod(alwaysRun = true)
@@ -143,14 +146,14 @@ public class BookTest {
     }
 
     @Step
-    private void addBookToCollection(String token, String userId) {
+    private void addBookToCollection(String token, String userId, String bookId) {
         given().contentType("application/json")
                 .header("Authorization", "Bearer " + token)
                 .body("{\n"
                         + "  \"userId\": \""+ userId + "\",\n"
                         + "  \"collectionOfIsbns\": [\n"
                         + "    {\n"
-                        + "      \"isbn\": \"9781449325862\"\n"
+                        + "      \"isbn\": \"" + bookId + "\"\n"
                         + "    }\n"
                         + "  ]\n"
                         + "}")
@@ -169,6 +172,17 @@ public class BookTest {
                 .then()
                 .assertThat().statusCode(200)
                 .extract().path("userId");
+    }
+
+    private void checkBookIsInCollection(String bookId, String token, String userId) {
+        ArrayList<HashMap> books = given()
+                .header("Authorization", "Bearer " + token)
+                .when()
+                .get("https://demoqa.com/Account/v1/User/" + userId)
+                .then()
+                .log().all()
+                .extract().body().path("books");
+        assertEquals(books.get(0).get("isbn"), bookId, "Wrong book is added to collection");
     }
 
     private void closeAlertIfPresent() {
